@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>PySecScope - Linux Enumeration Tool</title>
+  <meta name="description" content="PySecScope is a comprehensive Linux enumeration tool with a Fancy Tkinter GUI. It provides system, network, and security information in multiple formats.">
+  <meta name="keywords" content="PySecScope, Linux, enumeration, security, Tkinter, scanner, linux security tool">
+  <meta name="author" content="Bocaletto Luca / Livenze GPL">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:title" content="PySecScope - Linux Enumeration Tool">
+  <meta property="og:description" content="A comprehensive Linux enumeration tool with GUI built in Python using Tkinter.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://github.com/bocaletto-luca/PySecScope">
+  <meta property="og:image" content="https://via.placeholder.com/1200x630.png?text=PySecScope"> 
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PySecScope - Linux Enumeration Tool">
+  <meta name="twitter:description" content="A comprehensive Linux enumeration tool with a Tkinter GUI developed in Python.">
+  <meta name="twitter:image" content="https://via.placeholder.com/1200x630.png?text=PySecScope">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <!-- Custom CSS (if needed) -->
+  <style>
+    body {
+      padding-top: 60px;
+    }
+    header {
+      background-color: #343a40;
+      color: #fff;
+      padding: 20px 0;
+    }
+    header a.nav-link, footer a {
+      color: #fff;
+    }
+    footer {
+      background-color: #343a40;
+      color: #ccc;
+      padding: 20px 0;
+    }
+    .hero {
+      background: url('https://via.placeholder.com/1920x600.png?text=PySecScope') no-repeat center center;
+      background-size: cover;
+      color: #fff;
+      padding: 60px 0;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: bold;
+    }
+    .feature-list li {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top container">
+      <a class="navbar-brand" href="#">PySecScope</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" 
+              aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#features">Features</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://github.com/bocaletto-luca/PySecScope" target="_blank">GitHub</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#download">Download</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#contact">Contact</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>PySecScope</h1>
+      <p class="lead">A Comprehensive Linux Enumeration Tool with a Tkinter GUI</p>
+      <a href="https://github.com/bocaletto-luca/PySecScope" class="btn btn-primary btn-lg" target="_blank">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="container my-5">
+    <section id="features">
+      <h2>Features</h2>
+      <ul class="feature-list">
+        <li><strong>Modular Scan Modules:</strong> Collects system, user, network, and service information.</li>
+        <li><strong>Thorough Mode:</strong> Additional checks for SUID/SGID files, file capabilities, cron jobs, sudoers, log files, firewall rules, and more.</li>
+        <li><strong>Multi-Format Reporting:</strong> Export reports in Text, JSON, or CSV formats.</li>
+        <li><strong>Real-Time Progress:</strong> Responsive GUI with a progress bar and status updates during scanning.</li>
+        <li><strong>Cancel Scan Option:</strong> Ability to cancel an ongoing scan.</li>
+        <li><strong>Configuration:</strong> Customizable defaults via a configuration file (<code>pysecscope.ini</code>).</li>
+        <li><strong>Comprehensive Logging:</strong> Detailed logging via the Python logging module (saved in <code>pysecscope.log</code>).</li>
+      </ul>
+    </section>
+
+    <section id="download" class="my-5">
+      <h2>Download</h2>
+      <p>You can download the latest release from our <a href="https://github.com/bocaletto-luca/PySecScope" target="_blank">GitHub repository</a>.</p>
+      <p>The repository contains two versions:
+        <ul>
+          <li><code>main_eng.py</code> – English version</li>
+          <li><code>main_ita.py</code> – Italian version</li>
+        </ul>
+      </p>
+    </section>
+
+    <section id="contact" class="my-5">
+      <h2>Contact</h2>
+      <p>For questions, contributions, or bug reports, please open an issue on our <a href="https://github.com/bocaletto-luca/PySecScope/issues" target="_blank">GitHub Issues</a> page.</p>
+      <p>You can also reach out via email: <a href="mailto:your.email@example.com">your.email@example.com</a></p>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center">
+    <div class="container">
+      <p>&copy; <?php echo date("Y"); ?> PySecScope | Developed by <a href="https://github.com/bocaletto-luca" target="_blank">bocaletto-luca</a></p>
+      <p><a href="https://github.com/bocaletto-luca/PySecScope" target="_blank">GitHub Repository</a> | <a href="https://github.com/bocaletto-luca" target="_blank">GitHub Profile</a></p>
+    </div>
+  </footer>
+
+  <!-- Optional JavaScript -->
+  <!-- jQuery and Bootstrap Bundle (includes Popper) -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdH/Eklw7xN8YHc22J7R6YkxZtN1JnuV1YjEjtBysvFWZBHpTkJF9w8o0BfVO1" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-LtrjvnR4GE3l3MdLsZo1uEv9vYQBMK7Md5vX2rWcOZh3Iq3s2/XVfK8rgPbT4gv+" crossorigin="anonymous"></script>
+</body>
+</html>
