@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-PySecScope v3 - Python Security Scope
+PySecScope v4 - Python Security Scope
 Un tool di enumeration per sistemi Linux, con GUI Tkinter, ispirato a LinEnum.
-Versione aggiornata con gestione dei moduli (plugin), report in Text/JSON,
-progress bar aggiornata, e la possibilità di interrompere la scansione.
+Versione aggiornata con:
+ • Supporto per file di configurazione (pysecscope.ini)
+ • Logging avanzato
+ • Nuovi moduli (es. Firewall Info)
+ • Gestione dello stato e possibilità di interrompere la scansione
 """
 
 import os
@@ -14,23 +17,54 @@ from tkinter import ttk, filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 import json
 from datetime import datetime
+import configparser
+import logging
+
+# ---------------------------
+# CONFIGURAZIONE DA FILE
+# ---------------------------
+config = configparser.ConfigParser()
+if os.path.exists("pysecscope.ini"):
+    config.read("pysecscope.ini")
+    DEFAULT_EXPORT_DIR = config.get("Settings", "export_directory", fallback="")
+    DEFAULT_THOROUGH = config.getboolean("Settings", "thorough", fallback=False)
+    DEFAULT_REPORT_FORMAT = config.get("Settings", "report_format", fallback="Text")
+else:
+    DEFAULT_EXPORT_DIR = ""
+    DEFAULT_THOROUGH = False
+    DEFAULT_REPORT_FORMAT = "Text"
+
+# ---------------------------
+# SETTAGGIO DEL LOGGING
+# ---------------------------
+logging.basicConfig(
+    filename="pysecscope.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+logger.info("PySecScope v4 avviato")
 
 # ---------------------------
 # UTILITÀ: Esecuzione comandi
 # ---------------------------
 def run_command(cmd):
+    logger.debug(f"Esecuzione comando: {cmd}")
     try:
         output = subprocess.check_output(
             cmd, shell=True, stderr=subprocess.STDOUT, universal_newlines=True
         )
+        logger.debug(f"Output: {output[:100]}...")
         return output
     except subprocess.CalledProcessError as e:
+        logger.error(f"Errore comando {cmd}: {e.output}")
         return f"Errore: {e.output}"
 
 # ---------------------------
 # FUNZIONI DI SCANSIONE DI BASE
 # ---------------------------
 def get_system_info():
+    logger.info("Raccolta informazioni di sistema")
     info = "==== SYSTEM INFO ====\n" + run_command("uname -a") + "\n"
     try:
         for f in os.listdir("/etc"):
@@ -38,22 +72,27 @@ def get_system_info():
                 try:
                     with open(os.path.join("/etc", f), "r") as file:
                         info += f"--- {f} ---\n" + file.read() + "\n"
-                except Exception:
+                except Exception as ex:
+                    logger.error(f"Errore lettura {f}: {ex}")
                     continue
-    except Exception:
+    except Exception as e:
         info += "Impossibile leggere file di release.\n"
+        logger.error(f"Errore directory /etc: {e}")
     return info
 
 def get_user_info():
+    logger.info("Raccolta informazioni utente")
     info = "==== USER INFO ====\n" + run_command("id") + "\n"
     try:
         with open("/etc/passwd", "r") as f:
             info += "\n--- /etc/passwd ---\n" + f.read() + "\n"
-    except Exception:
+    except Exception as e:
         info += "Impossibile leggere /etc/passwd\n"
+        logger.error(f"Errore lettura /etc/passwd: {e}")
     return info
 
 def get_network_info():
+    logger.info("Raccolta informazioni di rete")
     info = "==== NETWORK INFO ====\n"
     out = run_command("ip a")
     if not out.strip():
@@ -64,11 +103,13 @@ def get_network_info():
     try:
         with open("/etc/resolv.conf", "r") as f:
             info += "\n--- /etc/resolv.conf ---\n" + f.read() + "\n"
-    except Exception:
+    except Exception as e:
         info += "Impossibile leggere /etc/resolv.conf\n"
+        logger.error(f"Errore lettura /etc/resolv.conf: {e}")
     return info
 
 def get_services_info():
+    logger.info("Raccolta informazioni servizi")
     info = "==== SERVICES INFO ====\n" + "\n--- Processi Correnti (ps aux) ---\n" + run_command("ps aux") + "\n"
     out = run_command("netstat -tulpn")
     if not out.strip():
@@ -77,6 +118,7 @@ def get_services_info():
     return info
 
 def search_keyword_in_files(keyword, file_pattern, max_depth=4):
+    logger.info(f"Ricerca keyword '{keyword}' in file {file_pattern} (max_depth={max_depth})")
     cmd = f"find / -maxdepth {max_depth} -type f -name '{file_pattern}' -exec grep -Hn '{keyword}' {{}} \\; 2>/dev/null"
     result = run_command(cmd)
     if not result.strip():
@@ -90,6 +132,7 @@ def get_file_search_info(keyword):
     return info
 
 def container_checks():
+    logger.info("Esecuzione controlli container")
     info = "==== CONTAINER CHECKS ====\n"
     docker_check = run_command("grep -i docker /proc/self/cgroup")
     if docker_check.strip():
@@ -105,11 +148,13 @@ def container_checks():
             info += "LXC container rilevato.\n"
         else:
             info += "Non in un LXC container.\n"
-    except Exception:
+    except Exception as e:
         info += "Impossibile controllare /proc/1/environ per LXC.\n"
+        logger.error(f"Errore lettura /proc/1/environ: {e}")
     return info
 
 def get_suid_info():
+    logger.info("Ricerca file SUID")
     cmd = "find / -perm -4000 -type f 2>/dev/null"
     output = run_command(cmd)
     if not output.strip():
@@ -118,6 +163,7 @@ def get_suid_info():
         return "==== SUID FILES ====\n" + output + "\n"
 
 def get_sgid_info():
+    logger.info("Ricerca file SGID")
     cmd = "find / -perm -2000 -type f 2>/dev/null"
     output = run_command(cmd)
     if not output.strip():
@@ -126,6 +172,7 @@ def get_sgid_info():
         return "==== SGID FILES ====\n" + output + "\n"
 
 def get_capabilities_info():
+    logger.info("Ricerca capabilities POSIX")
     output = run_command("getcap -r / 2>/dev/null")
     if not output.strip():
         return "Nessun file con capabilities POSIX trovato.\n"
@@ -133,6 +180,7 @@ def get_capabilities_info():
         return "==== FILES WITH CAPABILITIES ====\n" + output + "\n"
 
 def get_plan_files():
+    logger.info("Ricerca file .plan")
     output = run_command("find /home -iname '*.plan' -exec ls -la {} \\; 2>/dev/null")
     if output.strip():
         return "==== Plan Files in /home ====\n" + output + "\n"
@@ -140,6 +188,7 @@ def get_plan_files():
         return "Nessun file .plan trovato in /home.\n"
 
 def get_rhosts_files():
+    logger.info("Ricerca file .rhosts")
     output = run_command("find /home -iname '*.rhosts' -exec ls -la {} \\; 2>/dev/null")
     if output.strip():
         return "==== .rhosts Files in /home ====\n" + output + "\n"
@@ -147,6 +196,7 @@ def get_rhosts_files():
         return "Nessun file .rhosts trovato in /home.\n"
 
 def get_bash_history():
+    logger.info("Ricerca file .bash_history")
     output = run_command("find /home -name '.bash_history' -exec ls -la {} \\; -exec cat {} \\; 2>/dev/null")
     if output.strip():
         return "==== .bash_history Files in /home ====\n" + output + "\n"
@@ -154,6 +204,7 @@ def get_bash_history():
         return "Nessun file .bash_history accessibile in /home.\n"
 
 def get_bak_files():
+    logger.info("Ricerca file .bak")
     output = run_command("find / -iname '*.bak' -type f 2>/dev/null")
     if output.strip():
         return "==== .bak Files ====\n" + output + "\n"
@@ -161,6 +212,7 @@ def get_bak_files():
         return "Nessun file .bak trovato.\n"
 
 def get_mail_info():
+    logger.info("Ricerca informazioni mail")
     info = "==== MAIL INFO ====\n" + run_command("ls -la /var/mail") + "\n"
     root_mail = run_command("head /var/mail/root")
     if root_mail.strip():
@@ -169,22 +221,34 @@ def get_mail_info():
 
 # Nuovi moduli aggiunti
 def get_cron_jobs_info():
+    logger.info("Ricerca informazioni su cron jobs")
     try:
         crontab = run_command("cat /etc/crontab")
         cron_spool = run_command("ls -la /var/spool/cron 2>/dev/null")
         cron_info = "---- /etc/crontab ----\n" + crontab + "\n---- /var/spool/cron ----\n" + cron_spool
         return "==== CRON JOBS INFO ====\n" + cron_info + "\n"
     except Exception as e:
+        logger.error(f"Errore cron jobs: {e}")
         return f"Errore nella lettura dei cron jobs: {e}\n"
 
 def get_sudoers_info():
+    logger.info("Raccolta informazioni del file sudoers")
     try:
         sudoers = run_command("cat /etc/sudoers 2>/dev/null")
         if not sudoers.strip():
             return "Non è possibile leggere /etc/sudoers o il file è vuoto.\n"
         return "==== SUDOERS INFO ====\n" + sudoers + "\n"
     except Exception as e:
+        logger.error(f"Errore lettura /etc/sudoers: {e}")
         return f"Errore nella lettura di /etc/sudoers: {e}\n"
+
+def get_firewall_info():
+    logger.info("Ricerca informazioni del firewall (iptables)")
+    output = run_command("iptables -L 2>/dev/null")
+    if not output.strip():
+        return "Impossibile leggere le regole del firewall (iptables).\n"
+    else:
+        return "==== FIREWALL INFO (iptables) ====\n" + output + "\n"
 
 # ---------------------------
 # GESTIONE DEI MODULI (PLUGIN)
@@ -208,7 +272,8 @@ def get_default_modules(thorough=False):
             ("Backup Files", get_bak_files),
             ("Mail Info", get_mail_info),
             ("Cron Jobs Info", get_cron_jobs_info),
-            ("Sudoers Info", get_sudoers_info)
+            ("Sudoers Info", get_sudoers_info),
+            ("Firewall Info", get_firewall_info)
         ])
     return modules
 
@@ -216,7 +281,6 @@ def get_default_modules(thorough=False):
 # FUNZIONE DI SCANSIONE AGGREGATA CON MODULI
 # ---------------------------
 def run_scan(options, selected_modules, report_format="Text"):
-    # Se il report è in JSON, raccogliamo i risultati in un dizionario.
     if report_format == "JSON":
         results_dict = {}
     else:
@@ -226,12 +290,12 @@ def run_scan(options, selected_modules, report_format="Text"):
     progress_counter = 0
     
     for module_name, module_func in selected_modules:
-        # Se la scansione è stata interrotta, fermiamo il processo.
         if options["cancel_event"].is_set():
             if report_format == "JSON":
                 results_dict["Interrupted"] = "La scansione è stata interrotta dall'utente."
             else:
                 results_str += "\nLa scansione è stata interrotta dall'utente.\n"
+            logger.info("Scansione interrotta dall'utente")
             break
         
         result = module_func()
@@ -244,7 +308,6 @@ def run_scan(options, selected_modules, report_format="Text"):
     
     final_result = json.dumps(results_dict, indent=4) if report_format == "JSON" else results_str
     
-    # Export del report se specificato.
     if options.get("export"):
         try:
             now = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
@@ -254,8 +317,10 @@ def run_scan(options, selected_modules, report_format="Text"):
             with open(filename, "w") as f:
                 f.write(final_result)
             final_result += "\nReport esportato in: " + filename + "\n"
+            logger.info(f"Report esportato in: {filename}")
         except Exception as e:
             final_result += "\nErrore durante l'esportazione del report: " + str(e) + "\n"
+            logger.error(f"Errore export report: {e}")
     
     return final_result
 
@@ -265,9 +330,9 @@ def run_scan(options, selected_modules, report_format="Text"):
 class PySecScopeGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("PySecScope v3 - Python Security Scope")
+        self.title("PySecScope v4 - Python Security Scope")
         self.geometry("950x750")
-        self.cancel_event = threading.Event()  # Per gestire l'interruzione della scansione
+        self.cancel_event = threading.Event()  # Per gestire la cancellazione
         self.create_widgets()
 
     def create_widgets(self):
@@ -275,28 +340,25 @@ class PySecScopeGUI(tk.Tk):
         options_frame = ttk.LabelFrame(self, text="Opzioni")
         options_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # Campo per la keyword
         ttk.Label(options_frame, text="Keyword:").grid(column=0, row=0, sticky=tk.W, padx=5, pady=2)
         self.keyword_entry = ttk.Entry(options_frame, width=30)
         self.keyword_entry.grid(column=1, row=0, padx=5, pady=2)
-
-        # Campo per la directory di export
+        
         ttk.Label(options_frame, text="Export Directory:").grid(column=0, row=1, sticky=tk.W, padx=5, pady=2)
         self.export_entry = ttk.Entry(options_frame, width=30)
         self.export_entry.grid(column=1, row=1, padx=5, pady=2)
         export_btn = ttk.Button(options_frame, text="Sfoglia", command=self.browse_export_dir)
         export_btn.grid(column=2, row=1, padx=5, pady=2)
-
-        # Checkbox per modalità thorough
-        self.thorough_var = tk.BooleanVar()
+        
+        self.thorough_var = tk.BooleanVar(value=DEFAULT_THOROUGH)
         ttk.Checkbutton(options_frame, text="Modalità Thorough", variable=self.thorough_var).grid(column=0, row=2, padx=5, pady=2)
-
-        # Combobox per selezione formato report
+        
         ttk.Label(options_frame, text="Formato Report:").grid(column=0, row=3, sticky=tk.W, padx=5, pady=2)
         self.report_format_cb = ttk.Combobox(options_frame, values=["Text", "JSON"], state="readonly", width=10)
-        self.report_format_cb.current(0)
+        default_format = DEFAULT_REPORT_FORMAT if DEFAULT_REPORT_FORMAT in ["Text", "JSON"] else "Text"
+        self.report_format_cb.set(default_format)
         self.report_format_cb.grid(column=1, row=3, padx=5, pady=2)
-
+        
         # Frame per la selezione dei moduli
         modules_frame = ttk.LabelFrame(self, text="Moduli di Scansione")
         modules_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -341,13 +403,12 @@ class PySecScopeGUI(tk.Tk):
         self.update_idletasks()
 
     def start_scan(self):
-        # Resetto il flag di cancellazione
         self.cancel_event.clear()
         self.start_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
         options = {
             "keyword": self.keyword_entry.get().strip(),
-            "export": self.export_entry.get().strip(),
+            "export": self.export_entry.get().strip() or DEFAULT_EXPORT_DIR,
             "thorough": self.thorough_var.get(),
             "progress_callback": self.update_progress,
             "cancel_event": self.cancel_event
@@ -362,16 +423,13 @@ class PySecScopeGUI(tk.Tk):
         for module_name, module_func in modules:
             if self.module_vars.get(module_name) and self.module_vars[module_name].get():
                 selected_modules.append((module_name, module_func))
-
-        # Se è presente una keyword, aggiungo il modulo di File Search.
         if options.get("keyword"):
             selected_modules.append(("File Search", lambda: get_file_search_info(options["keyword"])))
-        
-        thread = threading.Thread(target=self.scan_thread, args=(options, selected_modules, report_format), daemon=True)
-        thread.start()
+            
+        t = threading.Thread(target=self.scan_thread, args=(options, selected_modules, report_format), daemon=True)
+        t.start()
 
     def stop_scan(self):
-        # Imposto il flag di cancellazione per interrompere la scansione
         self.cancel_event.set()
         self.status_label.config(text="Richiesta di interruzione in corso...")
         self.stop_btn.config(state=tk.DISABLED)
