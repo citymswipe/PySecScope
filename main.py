@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-PySecScope v4 - Python Security Scope
+PySecScope v5 - Python Security Scope
 Un tool di enumeration per sistemi Linux, con GUI Tkinter, ispirato a LinEnum.
-Versione aggiornata con:
- • Supporto per file di configurazione (pysecscope.ini)
- • Logging avanzato
- • Nuovi moduli (es. Firewall Info)
- • Gestione dello stato e possibilità di interrompere la scansione
+Versione v5 include:
+ • Nuovi moduli: Log Files Info, Installed Packages Info.
+ • Menu Bar "File" e "Help" (About).
+ • Misurazione del tempo di esecuzione.
+ • Aggiornamenti avanzati dello stato e interruzione della scansione.
+ • Supporto per lettura di file di configurazione (pysecscope.ini) e logging.
 """
 
 import os
@@ -19,6 +20,7 @@ import json
 from datetime import datetime
 import configparser
 import logging
+import time
 
 # ---------------------------
 # CONFIGURAZIONE DA FILE
@@ -43,7 +45,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-logger.info("PySecScope v4 avviato")
+logger.info("PySecScope v5 avviato")
 
 # ---------------------------
 # UTILITÀ: Esecuzione comandi
@@ -219,7 +221,7 @@ def get_mail_info():
         info += "\n--- /var/mail/root (snippet) ---\n" + root_mail + "\n"
     return info
 
-# Nuovi moduli aggiunti
+# Nuovi moduli
 def get_cron_jobs_info():
     logger.info("Ricerca informazioni su cron jobs")
     try:
@@ -250,6 +252,27 @@ def get_firewall_info():
     else:
         return "==== FIREWALL INFO (iptables) ====\n" + output + "\n"
 
+def get_log_files_info():
+    logger.info("Raccolta informazioni da /var/log")
+    try:
+        log_files = os.listdir("/var/log")
+        files = "\n".join(log_files)
+        return "==== LOG FILES INFO in /var/log ====\n" + files + "\n"
+    except Exception as e:
+        logger.error(f"Errore lettura /var/log: {e}")
+        return f"Errore nella lettura di /var/log: {e}\n"
+
+def get_installed_packages_info():
+    logger.info("Raccolta informazioni pacchetti installati")
+    # Prova con dpkg, altrimenti con rpm
+    dpkg_output = run_command("dpkg -l 2>/dev/null")
+    if dpkg_output.strip():
+        return "==== INSTALLED PACKAGES (dpkg) ====\n" + dpkg_output + "\n"
+    rpm_output = run_command("rpm -qa 2>/dev/null")
+    if rpm_output.strip():
+        return "==== INSTALLED PACKAGES (rpm) ====\n" + rpm_output + "\n"
+    return "Nessuna informazione sui pacchetti trovata.\n"
+
 # ---------------------------
 # GESTIONE DEI MODULI (PLUGIN)
 # ---------------------------
@@ -273,7 +296,9 @@ def get_default_modules(thorough=False):
             ("Mail Info", get_mail_info),
             ("Cron Jobs Info", get_cron_jobs_info),
             ("Sudoers Info", get_sudoers_info),
-            ("Firewall Info", get_firewall_info)
+            ("Firewall Info", get_firewall_info),
+            ("Log Files Info", get_log_files_info),
+            ("Installed Packages Info", get_installed_packages_info)
         ])
     return modules
 
@@ -281,6 +306,7 @@ def get_default_modules(thorough=False):
 # FUNZIONE DI SCANSIONE AGGREGATA CON MODULI
 # ---------------------------
 def run_scan(options, selected_modules, report_format="Text"):
+    start_time = time.time()
     if report_format == "JSON":
         results_dict = {}
     else:
@@ -306,7 +332,14 @@ def run_scan(options, selected_modules, report_format="Text"):
         progress_counter += 1
         options["progress_callback"](progress_counter, num_modules)
     
-    final_result = json.dumps(results_dict, indent=4) if report_format == "JSON" else results_str
+    elapsed = time.time() - start_time
+    finish_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    summary = f"\n----- Scansione completata alle {finish_stamp} in {elapsed:.2f} secondi -----\n"
+    if report_format == "JSON":
+        results_dict["Summary"] = summary
+        final_result = json.dumps(results_dict, indent=4)
+    else:
+        final_result = results_str + summary
     
     if options.get("export"):
         try:
@@ -325,15 +358,41 @@ def run_scan(options, selected_modules, report_format="Text"):
     return final_result
 
 # ---------------------------
+# DIALOGO "ABOUT"
+# ---------------------------
+def show_about():
+    about_text = (
+        "PySecScope v5\n"
+        "Tool di enumeration per sistemi Linux con GUI Tkinter.\n"
+        "Ispirato a LinEnum e sviluppato in Python.\n"
+        "Autore: il nostro team\n"
+        "Data: " + datetime.now().strftime("%Y") + "\n"
+    )
+    messagebox.showinfo("About PySecScope", about_text)
+
+# ---------------------------
 # INTERFACCIA GRAFICA CON TKINTER
 # ---------------------------
 class PySecScopeGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("PySecScope v4 - Python Security Scope")
-        self.geometry("950x750")
+        self.title("PySecScope v5 - Python Security Scope")
+        self.geometry("1000x800")
         self.cancel_event = threading.Event()  # Per gestire la cancellazione
+        self.create_menu()
         self.create_widgets()
+
+    def create_menu(self):
+        menubar = tk.Menu(self)
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Esci", command=self.quit)
+        menubar.add_cascade(label="File", menu=file_menu)
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="About", command=show_about)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        self.config(menu=menubar)
 
     def create_widgets(self):
         # Frame per le opzioni generali
