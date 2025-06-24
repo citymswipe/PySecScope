@@ -10,9 +10,16 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 from tkinter.scrolledtext import ScrolledText
+from datetime import datetime
 
-# Funzione di utilità per eseguire comandi e restituire output
+# ---------------------------
+# FUNZIONI DI UTILITÀ
+# ---------------------------
 def run_command(cmd):
+    """
+    Esegue un comando shell e restituisce l’output (o l’errore).
+    Se il comando fallisce, l’output dell’eccezione viene restituito.
+    """
     try:
         output = subprocess.check_output(
             cmd, shell=True, stderr=subprocess.STDOUT, universal_newlines=True
@@ -21,41 +28,51 @@ def run_command(cmd):
     except subprocess.CalledProcessError as e:
         return f"Errore: {e.output}"
 
-# Funzioni di raccolta informazioni
-
+# ---------------------------
+# FUNZIONI DI RACCOLTA INFORMAZIONI
+# ---------------------------
 def get_system_info():
     info = "==== SYSTEM INFO ====\n"
     info += run_command("uname -a") + "\n"
-    # Legge informazioni dai file di release (es. /etc/os-release o altri)
+    # Legge alcuni file di release (es. /etc/os-release, /etc/lsb-release, etc.)
     try:
         for f in os.listdir("/etc"):
-            if "release" in f:
-                with open(os.path.join("/etc", f), "r") as file:
-                    info += f"--- {f} ---\n" + file.read() + "\n"
-    except Exception as e:
-        info += "Impossibile leggere file di release\n"
+            if "release" in f.lower() or "version" in f.lower():
+                try:
+                    with open(os.path.join("/etc", f), "r") as file:
+                        info += f"--- {f} ---\n" + file.read() + "\n"
+                except Exception:
+                    continue
+    except Exception:
+        info += "Impossibile leggere i file di release.\n"
     return info
 
 def get_user_info():
     info = "==== USER INFO ====\n"
     info += run_command("id") + "\n"
-    # Prova a leggere /etc/passwd (se accessibile)
+    # Tentativo di lettura di /etc/passwd
     try:
         with open("/etc/passwd", "r") as f:
             info += "\n--- /etc/passwd ---\n" + f.read() + "\n"
-    except Exception as e:
+    except Exception:
         info += "Impossibile leggere /etc/passwd\n"
     return info
 
 def get_network_info():
     info = "==== NETWORK INFO ====\n"
-    # Utilizza 'ip a', se non disponibile 'ifconfig -a'
+    # Utilizza 'ip a' se disponibile, altrimenti ifconfig
     net_info = run_command("ip a")
     if not net_info.strip():
         net_info = run_command("ifconfig -a")
     info += net_info + "\n"
     info += "\n--- ARP ---\n" + run_command("arp -a") + "\n"
     info += "\n--- Default Route ---\n" + run_command("ip route") + "\n"
+    # Legge i nameserver da /etc/resolv.conf
+    try:
+        with open("/etc/resolv.conf", "r") as f:
+            info += "\n--- /etc/resolv.conf ---\n" + f.read() + "\n"
+    except Exception:
+        info += "Impossibile leggere /etc/resolv.conf\n"
     return info
 
 def get_services_info():
@@ -67,10 +84,12 @@ def get_services_info():
     info += "\n--- Porte in Ascolto ---\n" + netstat_info + "\n"
     return info
 
-# Funzione per eseguire ricerche nei file tramite keyword
 def search_keyword_in_files(keyword, file_pattern, max_depth=4):
-    # Utilizza il comando find per cercare file corrispondenti e grep per la keyword
-    cmd = f"find / -maxdepth {max_depth} -type f -name '{file_pattern}' -exec grep -Hn '{keyword}' {{}} \\;"
+    """
+    Utilizza il comando find per cercare file (file_pattern) fino a una certa profondità (max_depth)
+    ed eseguire grep per la keyword.
+    """
+    cmd = f"find / -maxdepth {max_depth} -type f -name '{file_pattern}' -exec grep -Hn '{keyword}' {{}} \\; 2>/dev/null"
     result = run_command(cmd)
     if not result.strip():
         result = f"Nessuna corrispondenza per '{keyword}' in file {file_pattern}\n"
@@ -102,11 +121,84 @@ def container_checks():
             info += "LXC container rilevato.\n"
         else:
             info += "Non in un LXC container.\n"
-    except Exception as e:
+    except Exception:
         info += "Impossibile controllare /proc/1/environ per LXC.\n"
     return info
 
-# Funzione di scansione aggregata che combina le sezioni
+def get_suid_info():
+    """
+    Utilizza il comando find per cercare i file con il bit SUID settato.
+    """
+    cmd = "find / -perm -4000 -type f 2>/dev/null"
+    output = run_command(cmd)
+    if not output.strip():
+        return "Nessun file SUID trovato.\n"
+    else:
+        info = "==== SUID FILES ====\n" + output + "\n"
+        return info
+
+def get_sgid_info():
+    """
+    Utilizza il comando find per cercare i file con il bit SGID settato.
+    """
+    cmd = "find / -perm -2000 -type f 2>/dev/null"
+    output = run_command(cmd)
+    if not output.strip():
+        return "Nessun file SGID trovato.\n"
+    else:
+        info = "==== SGID FILES ====\n" + output + "\n"
+        return info
+
+def get_capabilities_info():
+    """
+    Utilizza il comando getcap per elencare i file con capabilities POSIX.
+    """
+    output = run_command("getcap -r / 2>/dev/null")
+    if not output.strip():
+        return "Nessun file con capabilities POSIX trovato.\n"
+    else:
+        info = "==== FILES WITH CAPABILITIES ====\n" + output + "\n"
+        return info
+
+def get_plan_files():
+    output = run_command("find /home -iname '*.plan' -exec ls -la {} \\; 2>/dev/null")
+    if output.strip():
+        return "==== Plan Files in /home ====\n" + output + "\n"
+    else:
+        return "Nessun file .plan trovato in /home.\n"
+
+def get_rhosts_files():
+    output = run_command("find /home -iname '*.rhosts' -exec ls -la {} \\; 2>/dev/null")
+    if output.strip():
+        return "==== .rhosts Files in /home ====\n" + output + "\n"
+    else:
+        return "Nessun file .rhosts trovato in /home.\n"
+
+def get_bash_history():
+    output = run_command("find /home -name '.bash_history' -exec ls -la {} \\; -exec cat {} \\; 2>/dev/null")
+    if output.strip():
+        return "==== .bash_history Files in /home ====\n" + output + "\n"
+    else:
+        return "Nessun file .bash_history accessibile in /home.\n"
+
+def get_bak_files():
+    output = run_command("find / -iname '*.bak' -type f 2>/dev/null")
+    if output.strip():
+        return "==== .bak Files ====\n" + output + "\n"
+    else:
+        return "Nessun file .bak trovato.\n"
+
+def get_mail_info():
+    info = "==== MAIL INFO ====\n"
+    info += run_command("ls -la /var/mail") + "\n"
+    root_mail = run_command("head /var/mail/root")
+    if root_mail.strip():
+        info += "\n--- /var/mail/root (snippet) ---\n" + root_mail + "\n"
+    return info
+
+# ---------------------------
+# FUNZIONE DI SCANSIONE AGGREGATA
+# ---------------------------
 def run_scan(options):
     results = ""
     results += "***** PySecScope Scan Started *****\n\n"
@@ -114,17 +206,43 @@ def run_scan(options):
     results += get_user_info() + "\n"
     results += get_network_info() + "\n"
     results += get_services_info() + "\n"
+    
+    # Se l'utente ha specificato una keyword, esegue la ricerca in file specifici.
     if options.get("keyword"):
         results += get_file_search_info(options["keyword"]) + "\n"
+    
+    # Se la modalità thorough è attivata, esegue controlli aggiuntivi.
     if options.get("thorough"):
-        results += "Modalità Thorough abilitata: ulteriori controlli possono essere implementati...\n"
-        # Qui si potrebbero aggiungere funzioni extra (ad es. ricerca SUID/SGID, capabilities, ecc.)
+        results += "\n--- Modalità Thorough Abilitata ---\n"
+        results += get_suid_info() + "\n"
+        results += get_sgid_info() + "\n"
+        results += get_capabilities_info() + "\n"
+        results += get_plan_files() + "\n"
+        results += get_rhosts_files() + "\n"
+        results += get_bash_history() + "\n"
+        results += get_bak_files() + "\n"
+        results += get_mail_info() + "\n"
+    
     results += container_checks() + "\n"
     results += "***** PySecScope Scan Completed *****\n"
+    
+    # Esportazione del report se è stata fornita una directory di export.
+    if options.get('export'):
+        try:
+            now = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+            export_dir = options.get('export')
+            filename = os.path.join(export_dir, f"PySecScope_report_{now}.txt")
+            with open(filename, "w") as f:
+                f.write(results)
+            results += "\nReport esportato in: " + filename + "\n"
+        except Exception as e:
+            results += "\nErrore durante l'esportazione del report: " + str(e) + "\n"
+    
     return results
 
-# --- Interfaccia Grafica Tkinter ---
-
+# ---------------------------
+# INTERFACCIA GRAFICA CON TKINTER
+# ---------------------------
 class PySecScopeGUI(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -137,7 +255,7 @@ class PySecScopeGUI(tk.Tk):
         options_frame = ttk.LabelFrame(self, text="Opzioni")
         options_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # Campo per la keyword
+        # Campo per inserire la keyword
         ttk.Label(options_frame, text="Keyword:").grid(column=0, row=0, sticky=tk.W, padx=5, pady=2)
         self.keyword_entry = ttk.Entry(options_frame, width=30)
         self.keyword_entry.grid(column=1, row=0, padx=5, pady=2)
@@ -149,7 +267,7 @@ class PySecScopeGUI(tk.Tk):
         export_btn = ttk.Button(options_frame, text="Sfoglia", command=self.browse_export_dir)
         export_btn.grid(column=2, row=1, padx=5, pady=2)
 
-        # Checkbox per modalità thorough
+        # Checkbox per la modalità thorough
         self.thorough_var = tk.BooleanVar()
         ttk.Checkbutton(options_frame, text="Modalità Thorough", variable=self.thorough_var).grid(column=0, row=2, padx=5, pady=2)
 
@@ -157,7 +275,7 @@ class PySecScopeGUI(tk.Tk):
         scan_btn = ttk.Button(options_frame, text="Avvia Scansione", command=self.start_scan)
         scan_btn.grid(column=1, row=3, padx=5, pady=5)
 
-        # Area testuale per mostrare i log e i risultati
+        # Area di log / output
         self.log_output = ScrolledText(self, wrap=tk.WORD, height=25)
         self.log_output.pack(fill=tk.BOTH, padx=10, pady=5, expand=True)
 
@@ -174,7 +292,7 @@ class PySecScopeGUI(tk.Tk):
             "thorough": self.thorough_var.get()
         }
         self.log_output.delete("1.0", tk.END)
-        # Esegue la scansione in un thread per non bloccare l'interfaccia
+        # Avvia la scansione in un thread separato per mantenere responsive l'interfaccia
         thread = threading.Thread(target=self.scan_thread, args=(options,), daemon=True)
         thread.start()
 
@@ -184,6 +302,9 @@ class PySecScopeGUI(tk.Tk):
         self.log_output.insert(tk.END, results)
         self.log_output.insert(tk.END, "\n--- Scansione completata ---\n")
 
+# ---------------------------
+# FUNZIONE PRINCIPALE
+# ---------------------------
 def main():
     app = PySecScopeGUI()
     app.mainloop()
